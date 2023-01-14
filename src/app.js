@@ -82,11 +82,11 @@ app.get("/messages", async (req, res) => {
     }
     try {
         const messageList = await db.collection("messages").find({ $or: [{ from: req.headers.user }, { to: req.headers.user }, { to: 'Todos' }] }).toArray();
-        if (limit) {
+        if (limit>0) {
             const sizeLimited = messageList.splice(0, limit);
-            return res.send(sizeLimited);
+            return res.send(sizeLimited.reverse());
         }
-        return res.send(messageList);
+        return res.send(messageList.reverse());
     } catch (error) {
         console.error("erro na rota get /messages", error);
         return res.sendStatus(500);
