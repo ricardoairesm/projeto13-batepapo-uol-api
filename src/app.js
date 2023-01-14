@@ -60,7 +60,6 @@ app.post("/participants", async (req, res) => {
     if (user) {
         return res.sendStatus(409);
     };
-
     const now = dayjs();
     //mandando as informações pro banco de dado
     try {
@@ -78,13 +77,16 @@ app.get("/messages", async (req, res) => {
     // buscando mensagens
     const { user } = req.headers.user;
     const limit = req.query.limit;
+    if(limit<=0){
+        return res.sendStatus(422);
+    }
     try {
         const messageList = await db.collection("messages").find({ $or: [{ from: req.headers.user }, { to: req.headers.user }, { to: 'Todos' }] }).toArray();
         if (limit) {
             const sizeLimited = messageList.splice(0, limit);
             return res.send(sizeLimited);
         }
-        return res.send(messageList.reverse());
+        return res.send(messageList);
     } catch (error) {
         console.error("erro na rota get /messages", error);
         return res.sendStatus(500);
@@ -96,7 +98,9 @@ app.post("/messages", async (req, res) => {
     // inserindo mensagens
     const user = req.headers.user;
     const hora = dayjs().format('HH:mm:ss');
+    const userCheck =  await db.collection("participants").findOne({name:req.headers.user});
     const completeMessage = { ...req.body, from: user, time: hora };
+    if(userCheck){
     if (!validData(messageSchema, req.body) || !validData(headerSchema, user)) {
         return res.sendStatus(422);
     }
@@ -107,11 +111,18 @@ app.post("/messages", async (req, res) => {
         console.error("erro na rota post /participants", error);
         return res.sendStatus(500);
     }
+}
+else{
+    return res.sendStatus(422)
+}
 });
 
 app.post("/status", async (req, res) => {
-    const test = await db.collection("participants").find({ name: req.headers.user });
-    if (!test) return res.sendStatus(404);
+    if (!validData(headerSchema, req.headers.user)) {
+            return res.sendStatus(404);
+        }
+    const test = await db.collection("participants").findOne({ name: req.headers.user });
+    if (test){
     try {
         const horaRefreshed = dayjs();
         const refreshed = await db.collection("participants").updateOne({ name: req.headers.user }, { $set: { lastStatus: horaRefreshed.valueOf() } });
@@ -120,6 +131,10 @@ app.post("/status", async (req, res) => {
         console.error("Erro na rota /status!", error);
         return res.sendStatus(500);
     }
+}
+else{
+    return res.sendStatus(404);
+}
 });
 
 async function removeInactiveUser(timer = 15000) {
