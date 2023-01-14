@@ -75,9 +75,8 @@ app.post("/participants", async (req, res) => {
 
 app.get("/messages", async (req, res) => {
     // buscando mensagens
-    const { user } = req.headers.user;
     const limit = req.query.limit;
-    if(limit<=0 || typeof limit === "string"){
+    if(req.query.limit<=0 || !(Number.isInteger(+req.query.limit))){
         return res.sendStatus(422);
     }
     try {
