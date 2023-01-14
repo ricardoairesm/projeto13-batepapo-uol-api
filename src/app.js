@@ -33,6 +33,7 @@ let db;
 
 await mongoClient.connect();
 db = mongoClient.db();
+removeInactiveUser();
 
 
 app.get("/participants", async (req, res) => {
@@ -83,7 +84,7 @@ app.get("/messages", async (req, res) => {
             const sizeLimited = messageList.splice(0, limit);
             return res.send(sizeLimited);
         }
-        return res.send(messageList);
+        return res.send(messageList.reverse());
     } catch (error) {
         console.error("erro na rota get /messages", error);
         return res.sendStatus(500);
@@ -108,9 +109,35 @@ app.post("/messages", async (req, res) => {
     }
 });
 
-app.post("/status", (req, res) => {
-
+app.post("/status", async (req, res) => {
+    const test = await db.collection("participants").find({ name: req.headers.user });
+    if (!test) return res.sendStatus(404);
+    try {
+        const horaRefreshed = dayjs();
+        const refreshed = await db.collection("participants").updateOne({ name: req.headers.user }, { $set: { lastStatus: horaRefreshed.valueOf() } });
+        return res.sendStatus(200);
+    } catch {
+        console.error("Erro na rota /status!", error);
+        return res.sendStatus(500);
+    }
 });
+
+async function removeInactiveUser(timer = 15000) {
+    setInterval(async () => {
+        try {
+            const now = dayjs();
+            const maxTimeOff = now.valueOf() - timer;
+            const inactiveList = await db.collection('participants').find({ lastStatus: { $lte: maxTimeOff } }).toArray();
+            inactiveList.map(async (inactiveUser)=>{
+                await db.collection('participants').deleteOne({ _id: inactiveUser._id });
+                await db.collection("messages").insertOne({name:inactiveUser.name,to:"Todos",text:"sai da sala...",type:"status",time:now.format('HH:mm:ss')})
+            })
+
+        } catch (error) {
+            console.error("removeInactive() error!", error);
+        }
+    }, timer);
+}
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}...`)
