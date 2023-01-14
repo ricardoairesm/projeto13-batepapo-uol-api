@@ -33,7 +33,7 @@ let db;
 
 await mongoClient.connect();
 db = mongoClient.db();
-await removeInactiveUser();
+removeInactiveUser();
 
 
 app.get("/participants", async (req, res) => {
@@ -145,7 +145,7 @@ async function removeInactiveUser(timer = 15000) {
             const inactiveList = await db.collection('participants').find({ lastStatus: { $lte: maxTimeOff } }).toArray();
             inactiveList.map(async (inactiveUser)=>{
                 await db.collection('participants').deleteOne({ _id: inactiveUser._id });
-                await db.collection("messages").insertOne({name:inactiveUser.name,to:"Todos",text:"sai da sala...",type:"status",time:now.format('HH:mm:ss')})
+                await db.collection("messages").insertOne({from:inactiveUser.name,to:"Todos",text:"sai da sala...",type:"status",time:now.format('HH:mm:ss')})
             })
 
         } catch (error) {
