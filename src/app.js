@@ -82,7 +82,7 @@ app.get("/messages", async (req, res) => {
     }
     try {
         const messageList = await db.collection("messages").find({ $or: [{ from: req.headers.user }, { to: req.headers.user }, { to: 'Todos' }] }).toArray();
-        if (limit>0) {
+        if (limit>0 || typeof limit === "string") {
             const sizeLimited = messageList.reverse().splice(0, limit);
             return res.send(sizeLimited);
         }
